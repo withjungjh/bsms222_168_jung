@@ -13,15 +13,28 @@ a <- 1
 b <- 1
 c <- -1
 ```
-which stores the values for later use. We use <- to assign values to the variables.
+which stores the values for later use. We use `<-` to assign values to the variables.
 
-We can also assign values using = instead of <-, but we recommend against using = to avoid confusion.
+We can also assign values using `=` instead of `<-`, but we recommend against using `=` to avoid confusion.
 
 Copy and paste the code above into your console to define the three variables. Note that R does not print anything when we make this assignment. This means the objects were defined successfully. Had you made a mistake, you would have received an error message.
 
-To see the value stored in a variable, we simply ask R to evaluate a and it shows the stored value:
+To see the value stored in a variable, we simply ask R to evaluate `a` and it shows the stored value:
 ```{r}
 a
 ```
+A more explicit way to ask R to show us the value stored in `a` is using `print` like this:
+```{r}
+print(a)
+```
+##2.2.2 The workspace
+
+As we define objects in the console, we are actually changing the workspace. You can see all the variables saved in your workspace by typing:
+```{r}
+ls()
+```
+In RStudio, the Environment tab shows the values:
+
+
 
 

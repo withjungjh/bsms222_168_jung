@@ -1,0 +1,159 @@
+#2.2 THe very basics
+
+Before we get started with the motivating dataset, we need to cover the very basics of R.
+
+##2.2.1 Objects
+Suppose a high school student asks us for help solving several quadratic equations of the form $ax^2+bx+c=0$.The quadratic formula gives us the solutions:
+$$
+\frac{-b-\sqrt{b^2-4ac}}{2a} and \frac{-b+\sqrt{b^2-4ac}}{2a}
+$$
+which of course change depending on the values of $a$, $b$, and  $c$. One advantage of programming languages is that we can define variables and write expressions with these variables, similar to how we do so in math, but obtain a numeric solution. We will write out general code for the quadratic equation below, but if we are asked to solve $x^2+X-1=0$, then we define:
+```{r}
+a <- 1
+b <- 1
+c <- -1
+```
+which stores the values for later use. We use `<-` to assign values to the variables.
+
+We can also assign values using `=` instead of `<-`, but we recommend against using `=` to avoid confusion.
+
+Copy and paste the code above into your console to define the three variables. Note that R does not print anything when we make this assignment. This means the objects were defined successfully. Had you made a mistake, you would have received an error message.
+
+To see the value stored in a variable, we simply ask R to evaluate `a` and it shows the stored value:
+```{r}
+a
+```
+A more explicit way to ask R to show us the value stored in `a` is using `print` like this:
+```{r}
+print(a)
+```
+##2.2.2 The workspace
+
+As we define objects in the console, we are actually changing the workspace. You can see all the variables saved in your workspace by typing:
+```{r}
+ls()
+```
+In RStudio, the Environment tab shows the values:
+
+We should see `a`,`b`, and `c`. If you try to  recover the value of a variable that is not in your workspace, receive an error. For example, if you type `x` you will receive the following message: 
+```{r}
+x
+```
+Now since these values are saved in variables, to obtain a solution to our equation, we use the quadratic formula:
+```{r}
+(-b + sqrt(b^2-4*a*c))/(2*a)
+(-b - sqrt(b^2-4*a*c))/(2*a)
+```
+##2.2.3 Fuctions
+Once you define variables, the data analysis process can usually be described as a series of functions applied to the data. R includes several predefined functions and most of the analysis pipelines we construct make extensive use of these.
+
+We already used the `install.packages`, `library`, and `ls` functions. We also used the function `sqrt` to solve the quadratic equation above. There are many more prebuilt functions and even more can be added through packages. These functions do not appear in the workspace because you did not define them, but they are available for immediate use.
+
+In general, we need to use parentheses to evaluate a function. If you type `ls`, the function is not evaluated and instead R shows you the code that defines the function. If you type `ls()` the function is evaluated and, as seen above, we see objects in the workspace.
+
+Unlik `ls`, most fucntions require one or more _argumets_.Below is an example of how we assign an object to the argument of the function `log`. Remember that we earlier defined `a` to be 1:
+```{r}
+log(8)
+log(a)
+```
+
+You can find out what the function expects and what it does by reviewing the very useful manuals included in R. You can get help by using the `help` function like this:
+```{r}
+help("log")
+```
+For most fucntions, we can also use this shorthand:
+```{r}
+?log
+```
+The help page will show you what arguments the function is expecting. For example, `log` needs `x` and `base` to run. However, some arguments are required and others are optional. You can determine which arguments are optional by noting in the help document that a default value is assigned with `=`. Defining these is optional. For example, the base of the function log defaults to `base = exp(1)` making log the natural log by default.
+
+If you want a quick look at the arguments without opening the help system, you can type:
+```{r}
+args(log)
+```
+
+You can change the default values by simply assigning another object:
+```{r}
+log(8, base=2)
+```
+
+Note that we have not been specifying the arguments `x` as such:
+```{r}
+log(x=8, base=2)
+```
+The above code works, but we can save ourselves some typing:if no argument name is used, R assumes you are entering arguments in the order shown in the help file or by `args`. So by not using the names, it assumes the arguments are `x` followed by `base`:
+```{r}
+log(8,2)
+```
+If using the arguments' names, then we can include them in whatever order we want:
+```{r}
+log(base=2, x=8)
+```
+To specify arguments, we must use `=`, and cannot use `<-`.
+
+There are some exceptions to the rule that functions need the parentheses to be evaluated. Among these, the most commonly used are the arithmetic and relational operators. For example:
+```{r}
+2^3
+```
+You can see the arithmetic operators by typing:
+```{r}
+help("+")
+```
+or
+```{r}
+?"+"
+```
+and the relational operators by typing:
+```{r}
+help(">")
+```
+or
+```{r}
+?">"
+```
+
+##2.2.4 Other prebuilt objects
+
+There are several datasets that are included for users to practice and test out functions. You can see all the available datasets by typing:
+```{r}
+data()
+```
+This shows you the object name for these datasets. These datasets are objects that can be used by simply typing the name. For example, if you type:
+```{r}
+co2
+```
+R will show you Mauna Loa atmospheric CO2 concentration data
+
+Other prebuilt objects are methematical quantities, such as the constant $\pi$ and $\infty$:
+```{r}
+pi
+Inf+1
+```
+
+##2.2.5 Variable names
+
+We have used the letters `a`, `b`, and `c` as variable names, but variable names can be almost anything. Some basic rules in R are that variable names have to start with a letter, can’t contain spaces, and should not be variables that are predefined in R. For example, don’t name one of your variables `install.packages` by typing something like `install.packages <- 2`.
+
+A nice convention to follow is to use meaningful words that describe what is stored, use only lower case, and use underscores as a substitute for spaces. For the quadratic equations, we could use something like this:
+
+```{r}
+solution_1 <-(-b + sqrt(b^2-4*a*c))/(2*a)
+solution_2 <-(-b - sqrt(b^2-4*a*c))/(2*a)
+```
+
+For more advice, we highly recommend studying Hadley Wickham’s style guide
+
+##2.2.6 Saving your workspace
+
+
+
+
+
+
+
+
+
+
+
+
+
