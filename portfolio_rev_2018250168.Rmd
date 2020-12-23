@@ -1,0 +1,205 @@
+---
+title: "portfolio_rev_2018250168"
+output: html_notebook
+---
+
+# Pattern Comparison of Frequency of DEG in ASD patients with or without Epilepsy and Tendency for Each Cell Type
+<br/><br/>
+
+## 1. Introduction
+
+ASD는 그 자체로 상당히 힘든 질병이지만, ASD 환자들 중 상당 수가 Epilepsy도 동시에 관찰되고 있다. Epilepsy는 발작(Seizure)을 동반하여 발생하며 Epilepsy 환자 중 상당수가 갑작스럽게 죽음을 맞이하는 경우를 볼 수 있다.[data S1] 따라서 단순히 ASD만 가지고 있는 집단과 ASD와 Epilepsy를 모두 가지고 있는 집단들 사이에는 유전적 발현패턴에 차이가 있음을 유추해 볼 수 있다. 따라서 여기에서는 __data S4__ 의 __Individual Specific DEG__ 를 통해 환자 집단 사이에서 어떤 빈도로 DEG의 발현이 일어나는지 그 패턴을 보고자 했다. 또한 이런 패턴의 차이가 명확한 몇몇 DEG를 대상으로 fold change는 어느 정도 일어나는지를 보고자 했다. 
+
+<br/><br/>
+## 2. Data wrangling
+
+주어진 Individual Specific DEG의 특징은 각 gene에 대한 정량적인 정보 없이 DEG의 발현 방향이 control group과 비교했을 때 더 많이 발현되었는지 적게 발현되었는지 여부만을 보여주고 있다. 따라서 이러한 정량적 데이터의 부족을 극복하기 위해서 'ASD_patients_with_DE_signal' column의 환자를 ASD만 가진 환자와 ASD와 Epilepsy를 가진 환자로 분류하고 유전자별 DEG의 발현 횟수를 확인하였다. 발현 빈도는 각 환자의 case(ASD_only, ASD_Epilepsy)의 수로 나눠주어 구하였다. 그리고 upregulated case와 downregulated case를 구분하기 위해서 downregulated case의 경우 (-)부호를 붙여주었다. 
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(cowplot)
+library(ggpubr)
+library(ggrepel)
+
+# Data load
+ASD_DEG <- read_excel("C:/Users/withj/Rproject/aav8130_Data-S4.xlsx", sheet = 1)
+ASD_sample <- read_excel("C:/Users/withj/Rproject/aav8130_Data-S1.xlsx", sheet = 1)
+Ind_DEG <- read_excel("C:/Users/withj/Rproject/aav8130_Data-S4.xlsx", sheet = 4)
+
+
+
+# ASD+Epilepsy Patient ID
+a_id <- ASD_sample %>% filter(grepl("Epilepsy", ASD_sample$Other_diagnoses)) %>% .$Patient_ID
+
+# code to get the number of patients for each patients case  
+a <- Ind_DEG %>% 
+  separate_rows(ASD_patients_with_DE_signal) %>%
+  mutate(patient_case = ifelse(ASD_patients_with_DE_signal %in% a_id  ,
+                               "ASD_Epilepsy", "ASD_only")) %>%
+  .$ASD_patients_with_DE_signal %>% unique() 
+
+# wrangling
+Ind_DEG1 <-Ind_DEG %>% 
+  separate_rows(ASD_patients_with_DE_signal) %>%
+  mutate(patient_case = ifelse(ASD_patients_with_DE_signal %in% a_id  ,
+                               "ASD_Epilepsy", "ASD_only")) %>%
+  group_by(Gene_name, patient_case) %>%
+  count(`Direction_of_change_(ASD/Control)`) %>%
+  merge(x =., y = select(ASD_DEG, Cell_type, Gene_name), by = "Gene_name") %>%
+  mutate(n = ifelse(patient_case == "ASD_Epilepsy", n/8, n/7))%>%
+  mutate(average_DEG = ifelse(`Direction_of_change_(ASD/Control)` == "DOWN", -n, n)) %>%
+  mutate(col_id = paste(Cell_type, Gene_name, `Direction_of_change_(ASD/Control)`, sep="."))
+
+
+Ind_DEG2 <- Ind_DEG1 %>% 
+  select(col_id, patient_case, average_DEG) %>%
+  spread(patient_case, average_DEG) %>%
+  mutate(ASD_Epilepsy = replace_na(ASD_Epilepsy, 0)) %>%
+  mutate(ASD_only = replace_na(ASD_only, 0)) %>%
+  merge(x = ., y = Ind_DEG1 %>% select(col_id, Cell_type), 
+        by = "col_id") %>%
+  mutate(ratio = ASD_Epilepsy/ASD_only) %>%
+  mutate(col_id2 = col_id)%>%
+  separate(col_id2, c("Cell_type", "Gene_name", "Direction_of_FC"), sep="\\.") %>%
+  mutate(col_id3 = paste(Cell_type, Gene_name, sep="_")) %>%
+  unique()
+  
+
+#lines slop 4/5, 1, 5/4
+d <- tibble::tribble(
+  ~ID, ~b0, ~c,
+  1L,  4/5, "range",
+  2L,  1,   "standard",
+  3L,  5/4, "range"
+  )
+
+ggarrange(
+Ind_DEG2 %>%
+  filter(Cell_type %in% c("L2/3", "L4", "L5/6", "L5/6-CC")) %>%
+  ggplot(aes(ASD_only, ASD_Epilepsy, color = Cell_type)) +
+  geom_hline(yintercept = 0)+
+  geom_vline(xintercept = 0)+
+  geom_abline(data = d, aes(slope = b0, intercept = 0, group = "ID"),
+              color = "grey",linetype = "dashed") +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)+
+  coord_fixed(ratio = 1) +
+  labs(title = "Excitatory Neuron") +
+  theme_minimal() +
+  scale_x_continuous(limit=c(-4.5,4.5), breaks = c(-4,-2,0,2,4))+
+  scale_y_continuous(limit=c(-4.5,4.5), breaks = c(-4,-2,0,2,4))+
+  theme(legend.title = element_blank(),
+        plot.title = element_text(face = "bold"),
+        axis.title = element_blank(),
+        legend.position = "bottom"), 
+Ind_DEG2 %>%
+  filter(Cell_type %in% c("IN-PV","IN-SST","IN-SV2C","IN-VIP")) %>%
+  ggplot(aes(ASD_only, ASD_Epilepsy, color = Cell_type)) +
+  geom_hline(yintercept = 0)+
+  geom_vline(xintercept = 0)+
+  geom_abline(data = d, aes(slope = b0, intercept = 0, group = "ID"),
+              color = "grey", linetype = "dashed") +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)+
+  coord_fixed(ratio = 1) +
+  labs(title = "Interneuron") +
+  theme_minimal() +
+  scale_x_continuous(limit=c(-4.5,4.5), breaks = c(-4,-2,0,2,4))+
+  scale_y_continuous(limit=c(-4.5,4.5), breaks = c(-4,-2,0,2,4))+
+  theme(legend.title = element_blank(),
+        plot.title = element_text(face = "bold"),
+        axis.title = element_blank(),
+       legend.position = "bottom"),
+Ind_DEG2 %>%
+  filter(Cell_type %in% c("Neu-mat", "Neu-NRGN-I","Neu-NRGN-II")) %>%
+  ggplot(aes(ASD_only, ASD_Epilepsy,, color = Cell_type)) +
+  geom_hline(yintercept = 0)+
+  geom_vline(xintercept = 0)+
+  geom_abline(data = d, aes(slope = b0, intercept = 0, group = "ID"),
+              color = "grey", linetype = "dashed") +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)+
+  coord_fixed(ratio = 1) +
+  labs(title = "Neu-mat and NRGN neuron") +
+  theme_minimal() +
+  scale_x_continuous(limit=c(-4.5,4.5), breaks = c(-4,-2,0,2,4))+
+  scale_y_continuous(limit=c(-4.5,4.5), breaks = c(-4,-2,0,2,4))+
+  theme(legend.title = element_blank(),
+        plot.title = element_text(face = "bold"), 
+        axis.title = element_blank(),
+       legend.position = "bottom"), 
+Ind_DEG2 %>%
+  filter(Cell_type %in% c("AST-FB","AST-PP", "OPC")) %>%
+  ggplot(aes(ASD_only, ASD_Epilepsy, color = Cell_type)) +
+  geom_hline(yintercept = 0)+
+  geom_vline(xintercept = 0)+
+  geom_abline(data = d, aes(slope = b0, intercept = 0, group = "ID"),
+              color = "grey",linetype = "dashed") +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)+
+  coord_fixed(ratio = 1) +
+  labs(title = "Glia and endothelial cell") +
+  theme_minimal() +
+  scale_x_continuous(limit=c(-4.5,4.5), breaks = c(-4,-2,0,2,4))+
+  scale_y_continuous(limit=c(-4.5,4.5), breaks = c(-4,-2,0,2,4))+
+  theme(legend.title = element_blank(),
+        plot.title = element_text(face = "bold"),
+        axis.title = element_blank(),
+       legend.position = "bottom"),ncol = 2, nrow = 2) %>%
+annotate_figure(top = text_grob("Pattern Comparison of Frequency of DEG in Each Patients Case", 
+                                face = "bold"),
+                bottom = text_grob("Frequency of DEG for ASD-only(n = 7)", 
+                                   face = "bold"),
+                left = text_grob("Frequency of DEG for ASD with Epilepsy(n = 8)", 
+                                 face = "bold", rot = 90))
+
+
+```
+
+```{r}
+# ASDE DEGs 62
+ASDE_gn <- ASD_DEG %>% 
+  filter(Epilepsy_DEG == "yes") %>% 
+  .$Gene_name
+# ASDO DEGs that overlap with ASDE DEGs 55
+ASD_O <- ASD_DEG %>% 
+  filter(Epilepsy_DEG == "no") %>% 
+  filter(Gene_name %in% ASDE_gn) 
+
+
+#ASDE_DEG: ASD DEG table 
+ASDE_FC <- ASD_DEG %>%
+  mutate(col_id3 = paste(Cell_type, Gene_name, sep="_"))%>%
+  filter(col_id3 %in% Ind_DEG2$col_id3) %>% filter(Epilepsy_DEG == "yes") %>%
+  select(Cell_type, Gene_name, Fold_change, q_value, col_id3)
+
+
+#ratio of frequency and fold change of ASDE
+rnf <- Ind_DEG2 %>%
+  merge(x = ., y = ASDE_FC %>% filter(q_value <= 0.05), 
+         by = "col_id3", all.x = TRUE) %>%
+  filter(Fold_change != "NA")  
+
+rnf %>%
+  ggplot(aes(Fold_change, ratio, color = Cell_type.x)) +
+  geom_vline(xintercept = 0, color = 'grey', lwd = 2) +
+  geom_hline(yintercept = 0, color = 'grey', lwd = 2, linetype= 'dashed') +
+  geom_hline(yintercept = c(4/5, 5/4), color = 'light grey', linetype = "dashed", lwd= 1) +
+  geom_label_repel(aes(label = Gene_name.x), 
+                   data = rnf %>% filter(q_value <= 0.025) %>%
+                     filter(ratio > 5/4 | ratio < 4/5), 
+                   show.legend = F)+
+  geom_point(size = 2) +
+  expand_limits(y = 0) +
+  scale_x_continuous(limits=c(-1,1), breaks=seq(-1,1, 0.5)) +
+  theme_classic() +
+  labs(x = "Fold Change", y = "Ratio of Frequency(ASE with Epilepsy/ASD only)")
+```
+과연 빈도수의 차이와 fold change 사이에 어떤 연관성이 있을지
+이걸 알기 위해서는 빈도수의 차이를 보여주는 지표와 fold change 차이를 알려주는 지표가 필요한데, 
+빈도수 차이를 보여주는 지표는 위의 그래프에서 원점에서 각 점으로 그은 기울기 값으로 하고
+fold change의 차이를 알려주는 지표는 역시 비슷하게 fc(ASDE)/fc(ASDO)로 하여 
+분자와 분모에 있는 control 값을 소거하고 ASDE와 ASDO사이의 비교만을 할 수 있다. 
+이 두 varible사이에 어떤 연관성이 있을지를 보고자 하였다. 
+
